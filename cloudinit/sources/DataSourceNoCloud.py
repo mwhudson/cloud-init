@@ -256,10 +256,10 @@ def _quick_read_instance_id(dirs=None):
 
 
 def load_cmdline_data(fill, cmdline=None):
-    pairs = [("ds=nocloud", sources.DSMODE_LOCAL),
-             ("ds=nocloud-net", sources.DSMODE_NETWORK)]
-    for idstr, dsmode in pairs:
-        if parse_cmdline_data(idstr, fill, cmdline):
+    pairs = [("nocloud", sources.DSMODE_LOCAL),
+             ("nocloud-net", sources.DSMODE_NETWORK)]
+    for source_name, dsmode in pairs:
+        if parse_cmdline_data(source_name, fill, cmdline):
             # if dsmode was explicitly in the command line, then
             # prefer it to the dsmode based on the command line id
             if 'dsmode' not in fill:
@@ -273,24 +273,18 @@ def load_cmdline_data(fill, cmdline=None):
 # with data that was found.
 # Example cmdline:
 #  root=LABEL=uec-rootfs ro ds=nocloud
-def parse_cmdline_data(ds_id, fill, cmdline=None):
+def parse_cmdline_data(source_name, fill, cmdline=None):
     if cmdline is None:
         cmdline = util.get_cmdline()
-    cmdline = " %s " % cmdline
 
-    if not (" %s " % ds_id in cmdline or " %s;" % ds_id in cmdline):
+    ds_arg = cmdline.get('ds', '')
+    if not ds_arg.startswith(source_name):
         return False
 
-    argline = ""
-    # cmdline can contain:
-    # ds=nocloud[;key=val;key=val]
-    for tok in cmdline.split():
-        if tok.startswith(ds_id):
-            argline = tok.split("=", 1)
-
-    # argline array is now 'nocloud' followed optionally by
-    # a ';' and then key=value pairs also terminated with ';'
-    tmp = argline[1].split(";")
+    # ds_arg array is now 'nocloud' or 'nocloud-net' followed
+    # optionally by a ';' and then key=value pairs also terminated
+    # with ';'
+    tmp = ds_arg[1].split(";")
     if len(tmp) > 1:
         kvpairs = tmp[1:]
     else:

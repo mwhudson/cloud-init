@@ -418,7 +418,7 @@ def find_fallback_nic_on_linux(blacklist_drivers=None):
     if not blacklist_drivers:
         blacklist_drivers = []
 
-    if 'net.ifnames=0' in util.get_cmdline():
+    if util.get_cmdline().get('net.ifnames') == "0":
         LOG.debug('Stable ifnames disabled by net.ifnames=0 in /proc/cmdline')
     else:
         unstable = [device for device in get_devicelist()

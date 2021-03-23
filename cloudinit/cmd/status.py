@@ -79,15 +79,15 @@ def _is_cloudinit_disabled(disable_file, paths):
     why.
     """
     is_disabled = False
-    cmdline_parts = get_cmdline().split()
+    cmdline = get_cmdline()
     if not uses_systemd():
         reason = 'Cloud-init enabled on sysvinit'
-    elif 'cloud-init=enabled' in cmdline_parts:
+    elif cmdline.get('cloud-init') == 'enabled':
         reason = 'Cloud-init enabled by kernel command line cloud-init=enabled'
     elif os.path.exists(disable_file):
         is_disabled = True
         reason = 'Cloud-init disabled by {0}'.format(disable_file)
-    elif 'cloud-init=disabled' in cmdline_parts:
+    elif cmdline.get('cloud-init') == 'disabled':
         is_disabled = True
         reason = 'Cloud-init disabled by kernel parameter cloud-init=disabled'
     elif not os.path.exists(os.path.join(paths.run_dir, 'enabled')):

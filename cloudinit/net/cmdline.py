@@ -72,8 +72,9 @@ class KlibcNetworkConfigSource(InitramfsNetworkConfigSource):
                 (ii) an open-iscsi interface file is present in the system
         """
         if self._files:
-            if 'ip=' in self._cmdline or 'ip6=' in self._cmdline:
-                return True
+            for tok in self._cmdline:
+                if tok.startswith('ip=') or tok.startswith('ip6='):
+                    return True
             if os.path.exists(_OPEN_ISCSI_INTERFACE_FILE):
                 # iBft can configure networking without ip=
                 return True

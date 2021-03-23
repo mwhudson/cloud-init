@@ -123,13 +123,11 @@ def apply_reporting_cfg(cfg):
         reporting.update_configuration(cfg.get('reporting'))
 
 
-def parse_cmdline_url(cmdline, names=('cloud-config-url', 'url')):
-    data = util.keyval_str_to_dict(cmdline)
+def get_cmdline_url(cmdline, names=('cloud-config-url', 'url')):
     for key in names:
-        if key in data:
-            return key, data[key]
-    raise KeyError("No keys (%s) found in string '%s'" %
-                   (cmdline, names))
+        if key in cmdline:
+            return key, cmdline[key]
+    raise KeyError("No keys (%s) found in cmdline '%s'" % (names, cmdline))
 
 
 def attempt_cmdline_url(path, network=True, cmdline=None):
@@ -155,7 +153,7 @@ def attempt_cmdline_url(path, network=True, cmdline=None):
         cmdline = util.get_cmdline()
 
     try:
-        cmdline_name, url = parse_cmdline_url(cmdline)
+        cmdline_name, url = get_cmdline_url(cmdline)
     except KeyError:
         return (logging.DEBUG, "No kernel command line url found.")
 

@@ -907,7 +907,7 @@ def read_cc_from_cmdline(cmdline=None):
     # cc:ssh_import_id: [smoser] end_cc cc:runcmd: [ [ ls, -l ] ] end_cc
     # cc:ssh_import_id: %5Bsmoser%5D end_cc
     if cmdline is None:
-        cmdline = get_cmdline()
+        cmdline = get_cmdline(raw=True)
 
     tag_begin = "cc:"
     tag_end = "end_cc"
@@ -1245,7 +1245,7 @@ def blkid(devs=None, disable_cache=False):
         cmd.extend(['-c', '/dev/null'])
     cmd.extend(devs)
 
-    # we have to decode with 'replace' as shelx.split (called by
+    # we have to decode with 'replace' as shlex.split (called by
     # load_shell_content) can't take bytes.  So this is potentially
     # lossy of non-utf-8 chars in blkid output.
     out, _ = subp.subp(cmd, capture=True, decode="replace")
@@ -1295,7 +1295,9 @@ def load_file(fname, read_cb=None, quiet=False, decode=True):
 
 @lru_cache()
 def _get_cmdline():
-    if is_container():
+    if 'DEBUG_PROC_CMDLINE' in os.environ:
+        cmdline = os.environ["DEBUG_PROC_CMDLINE"]
+    elif is_container():
         try:
             contents = load_file("/proc/1/cmdline")
             # replace nulls with space and drop trailing null
@@ -1309,14 +1311,32 @@ def _get_cmdline():
         except Exception:
             cmdline = ""
 
-    return cmdline
+    tokens = shlex.split(cmdline)
+    in_cc = False
+    kv = {}
+    for tok in tokens:
+        if in_cc:
+            if tok == 'end_cc':
+                in_cc = False
+            continue
+        elif tok == 'cc:':
+            in_cc = True
+            continue
+        try:
+            (key, val) = tok.split("=", 1)
+        except ValueError:
+            key = tok
+            val = True
+        kv[key] = val
+    return cmdline, kv
 
 
-def get_cmdline():
-    if 'DEBUG_PROC_CMDLINE' in os.environ:
-        return os.environ["DEBUG_PROC_CMDLINE"]
-
-    return _get_cmdline()
+def get_cmdline(raw=False):
+    raw_cmdline, kv_cmdline = _get_cmdline()
+    if raw:
+        return raw_cmdline
+    else:
+        return kv_cmdline
 
 
 def pipe_in_out(in_fh, out_fh, chunk_size=1024, chunk_cb=None):
@@ -2035,18 +2055,6 @@ def get_proc_env(pid, encoding='utf-8', errors='replace'):
     return env
 
 
-def keyval_str_to_dict(kvstring):
-    ret = {}
-    for tok in kvstring.split():
-        try:
-            (key, val) = tok.split("=", 1)
-        except ValueError:
-            key = tok
-            val = True
-        ret[key] = val
-    return ret
-
-
 def is_partition(device):
     if device.startswith("/dev/"):
         device = device[5:]
@@ -2465,8 +2473,7 @@ def system_is_snappy():
     except ValueError as e:
         LOG.warning("Unexpected error loading '%s': %s", orpath, e)
 
-    cmdline = get_cmdline()
-    if 'snap_core=' in cmdline:
+    if 'snap_core' in get_cmdline():
         return True
 
     content = load_file("/etc/system-image/channel.ini", quiet=True)
@@ -2486,11 +2493,7 @@ def indent(text, prefix):
 
 
 def rootdev_from_cmdline(cmdline):
-    found = None
-    for tok in cmdline.split():
-        if tok.startswith("root="):
-            found = tok[5:]
-            break
+    found = cmdline.get('root')
     if found is None:
         return None
 
